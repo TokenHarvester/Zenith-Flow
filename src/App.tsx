@@ -1,17 +1,29 @@
-// import { Toaster } from "@components/ui/toaster";
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { WalletContextProvider } from "./providers/WalletProvider";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
-import { useWallet } from "@lazorkit/wallet";
-import { PasskeyGateway } from "./components/PasskeyGateway";
-import { Dashboard } from "./components/Dashboard";
+const queryClient = new QueryClient();
 
-function App() {
-  const { isConnected } = useWallet();
-
-  return (
-    <div className="min-h-screen">
-      {!isConnected ? <PasskeyGateway /> : <Dashboard />}
-    </div>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <WalletContextProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </WalletContextProvider>
+  </QueryClientProvider>
+)
 
 export default App;
