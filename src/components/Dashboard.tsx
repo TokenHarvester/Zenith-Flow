@@ -7,7 +7,7 @@ import { PaymentForm } from "./PaymentForm";
 import { FeatureCards } from "./FeatureCards";
 import { BrandStory } from "./BrandStory";
 import { ZenithButton } from "./ui/ZenithButton";
-import { useWallet } from "@lazorkit/wallet";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export function Dashboard() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

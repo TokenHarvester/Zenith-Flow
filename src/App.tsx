@@ -1,3 +1,5 @@
+// import { Toaster } from "@components/ui/toaster";
+
 import { useWallet } from "@lazorkit/wallet";
 import { PasskeyGateway } from "./components/PasskeyGateway";
 import { Dashboard } from "./components/Dashboard";

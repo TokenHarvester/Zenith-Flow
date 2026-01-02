@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Fingerprint, LogIn, Loader2, Shield, Zap, RefreshCw, AlertCircle } from 'lucide-react';
 import { ZenithButton } from "./ui/ZenithButton";
 import { ZenithLogo } from "./ZenithLogo";
-import { useWallet } from "@lazorkit/wallet";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { title } from "framer-motion/client";
 
 export function PasskeyGateway() {

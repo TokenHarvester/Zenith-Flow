@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
 import { Copy, RefreshCw, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useWallet } from "@lazorkit/wallet";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export function WalletCard() {
-  const { smartWalletPubkey, isConnected } = useWallet();
+  const { publicKey, connected } = useWallet();
 
   const [balance, setBalance] = useState<number>(0);
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
@@ -15,7 +15,7 @@ export function WalletCard() {
 
   // Balanca Fetching from Solana
   const fetchBalance = async () => {
-    if (!smartWalletPubkey) return;
+    if (!publicKey) return;
 
     setIsRefreshing(true);
     setError(null);
@@ -26,7 +26,7 @@ export function WalletCard() {
         'confirmed'
       );
 
-      const pubkey = new PublicKey(smartWalletPubkey);
+      const pubkey = new PublicKey(publicKey);
       const balanceLamports = await connection.getBalance(pubkey);
       setBalance(balanceLamports / LAMPORTS_PER_SOL);
 
@@ -43,15 +43,15 @@ export function WalletCard() {
 
   // Fetch balance on mount and when wallet changes
   useEffect(() => {
-    if (isConnected && smartWalletPubkey) {
+    if (connected && publicKey) {
       fetchBalance();
     }
-  }, [isConnected, smartWalletPubkey]);
+  }, [connected, publicKey]);
 
   // Handle copy address
   const handleCopy = async () => {
-    if (!smartWalletPubkey) return;
-    await navigator.clipboard.writeText(smartWalletPubkey.toString());
+    if (!publicKey) return;
+    await navigator.clipboard.writeText(publicKey.toString());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -62,8 +62,8 @@ export function WalletCard() {
   };
 
   // Truncate address for display
-  const truncatedAddress = smartWalletPubkey
-  ? `${smartWalletPubkey.toString().slice(0, 6)}...${smartWalletPubkey.toString().slice(-4)}`
+  const truncatedAddress = publicKey
+  ? `${publicKey.toString().slice(0, 6)}...${publicKey.toString().slice(-4)}`
   :'Loading...';
 
   return (
@@ -109,7 +109,7 @@ export function WalletCard() {
             <button
               onClick={handleCopy}
               className="p-1.5 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors"
-              disabled={!smartWalletPubkey}
+              disabled={!publicKey}
               title="Copy full address"
             >
               <Copy className="w-3.5 h-3.5 text-primary-foreground" />
@@ -164,9 +164,9 @@ export function WalletCard() {
         </a>
 
         {/* Explorer Link */}
-        {smartWalletPubkey && (
+        {publicKey && (
           <a
-            href={`https://explorer.solana.com/address/${smartWalletPubkey}?cluster=devnet`}
+            href={`https://explorer.solana.com/address/${publicKey}?cluster=devnet`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 py-2 text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors"

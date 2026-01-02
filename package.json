@@ -17,6 +17,8 @@
     "@solana/kit": "^5.1.0",
     "@solana/kora": "^0.1.0",
     "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/web3.js": "^1.98.4",
     "@wallet-standard/wallet": "^1.1.0",
     "class-variance-authority": "^0.7.1",
