@@ -2,13 +2,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle, Zap, AlertCircle } from "lucide-react";
 import { ZenithButton } from "./ui/ZenithButton";
-import { useWallet } from "@lazorkit/wallet";
-import { PublicKey, TransactionInstruction, SystemProgram } from "@solana/web3.js";
-import * as anchor from '@coral-xyz/anchor';
-import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export function PaymentForm() {
-    const { smartWalletPubkey, signAndSendTransaction, isSigning} = useWallet()
+    const { publicKey, sendTransaction } = useWallet();
+    const { connection } = useConnection();
 
     const [recipient, setRecipient] = useState("");
     const [amount, setAmount] = useState("");
@@ -22,7 +21,7 @@ export function PaymentForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!smartWalletPubkey) {
+        if (!publicKey) {
             setError('Wallet not connected');
             return;
         }
@@ -50,32 +49,33 @@ export function PaymentForm() {
                 throw new Error('Maximum 0.5 SOL for demo purposes');
             } 
 
-            const lamports = Math.floor(amountNum * anchor.web3.LAMPORTS_PER_SOL);
+            const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
 
             console.log('🚀 Creating transaction...');
-            console.log('From:', smartWalletPubkey.toString());
+            console.log('From:', publicKey.toString());
             console.log('To:', recipient);
             console.log('Amount:', amountNum, 'SOL')
 
-            // Create SOL transfer instruction
-            const transferInstruction = SystemProgram.transfer({
-                fromPubkey: new PublicKey(smartWalletPubkey),
+            // Create transaction
+            const transaction = new Transaction(). add(
+              SystemProgram.transfer({
+                fromPubkey: publicKey,
                 toPubkey: recipientPubkey,
                 lamports: lamports,
-            });
+              })                
+            );
 
-            if (memo.trim()) {
-                console.log('Memo:', memo.trim());
-            }
+            // Send Transaction via Wallet Adapter
+            console.log('✍️ Sending transaction...')
+            const signature = await sendTransaction(transaction, connection);
 
-            // Sign and Send Transaction (GASLESS via Lazorkit Paymaster)
-            console.log('✍️ Signing transaction with passkey...')
-            const signature = await signAndSendTransaction({ instructions: [transferInstruction] });
+            console.log('⏳ Confirming transaction...');
+            await connection.confirmTransaction(signature, 'confirmed');
 
             console.log('✅ Transaction successful!');
             console.log('Signature:', signature);
 
-            setTxSignature(signature.toString());
+            setTxSignature(signature);
             setSuccess(true);
 
             // Reset Form
@@ -88,6 +88,7 @@ export function PaymentForm() {
                 setSuccess(false);
                 setTxSignature(null);
             }, 8000);
+
         } catch (err) {
             console.error('❌ Transaction failed:', err);
 
@@ -238,12 +239,12 @@ export function PaymentForm() {
           type="submit"
           className="w-full"
           size="lg"
-          disabled={isProcessing || isSigning || !smartWalletPubkey}
+          disabled={isProcessing || !publicKey}
         >
-          {isProcessing || isSigning ? (
+          {isProcessing ? (
             <>
               <Loader2 className="animate-spin" />
-              {isSigning ? 'Confirm with Biometrics...' : 'Processing...'}
+              Processing Transaction...
             </>
           ) : (
             <>

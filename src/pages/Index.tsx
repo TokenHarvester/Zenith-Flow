@@ -1,12 +1,12 @@
-import { useWallet } from "@lazorkit/wallet";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { PasskeyGateway } from "../components/PasskeyGateway";
 import { Dashboard } from "../components/Dashboard";
 
 export default function Index() {
-    const { isConnected } = useWallet()
+    const { connected } = useWallet()
 
     // Show PasskeyGateway if not connected, Dashboard if connected
-    if(!isConnected) {
+    if(!connected) {
         return <PasskeyGateway />;
     }
 
