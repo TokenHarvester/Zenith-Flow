@@ -48,7 +48,7 @@ This demo proves that blockchain applications can be as simple and intuitive as 
 ### Installation
 1. Clone the repository
    ```
-   git clone https://github.com/ElochukwuOrji/payzenithflow.git
-   cd payzenithflow
+   git clone https://github.com/TokenHarvester/Zenith-Flow.git
+   cd Zenith-Flow
    ```
 2. Install dependencies (use legacy-peer-deps for compatibility)  
