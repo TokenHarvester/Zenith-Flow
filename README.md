@@ -51,4 +51,70 @@ This demo proves that blockchain applications can be as simple and intuitive as 
    git clone https://github.com/TokenHarvester/Zenith-Flow.git
    cd Zenith-Flow
    ```
-2. Install dependencies (use legacy-peer-deps for compatibility)  
+2. Install dependencies (use legacy-peer-deps for compatibility)
+   ```
+   npm install --legacy-peer-deps
+   ```
+
+3. Create environment file
+   ```
+   cp .env.example .env
+   ```
+
+4. Start development server
+   ```
+   npm run dev
+   ```
+
+Visit https://localhost:5173 (note the HTTPS - required for passkeys!)
+
+🔒 Browser Security Warning: You'll see a certificate warning on first visit. Click "Advanced" → "Proceed to localhost" - this is normal for local development with HTTPS.
+
+## 🔧 Environment Configuration
+Create a `.env` file in the project root (or use the defaults):
+```
+# Solana RPC Configuration
+VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
+
+# Lazorkit Portal URL (for passkey authentication)
+VITE_IPFS_URL=https://portal.lazor.sh
+
+# Lazorkit Paymaster URL (for gasless transactions)
+VITE_PAYMASTER_URL=https://kora.devnet.lazorkit.com
+```
+
+**📝 Note:** No API key required! These default endpoints work perfectly for Devnet testing and development.
+
+## 🏗️ Project Structure
+```
+Zenith-Flow/
+├── src/
+│   ├── components/              # React components
+│   │   ├── PasskeyGateway.tsx   # 🔐 Authentication screen
+│   │   ├── Dashboard.tsx        # 📊 Main dashboard
+│   │   ├── WalletCard.tsx       # 💳 Wallet info display
+│   │   ├── PaymentForm.tsx      # 💸 Transaction form
+│   │   ├── BrandStory.tsx       # 📖 Brand narrative
+│   │   ├── FeatureCards.tsx     # ✨ Feature highlights
+│   │   ├── ZenithLogo.tsx       # 🏔️ Branded logo
+│   │   └── ui/                  # Reusable UI components
+│   │       └── ZenithButton.tsx # Custom button component
+│   ├── providers/               # Context providers
+│   │   └── WalletProvider.tsx   # 🔌 Wallet Adapter setup
+│   ├── pages/                   # Page components
+│   │   ├── Index.tsx            # Home page
+│   │   └── NotFound.tsx         # 404 page
+│   ├── lib/                     # Utility functions
+│   ├── App.tsx                  # Root component
+│   ├── main.tsx                 # Entry point
+│   └── index.css                # Global styles (Tailwind + custom)
+├── public/                      # Static assets
+├── docs/                        # Documentation
+│   ├── TUTORIAL_1.md            # Passkey authentication tutorial
+│   └── TUTORIAL_2.md            # Gasless transactions tutorial
+├── .env.example                 # Environment template
+├── package.json                 # Dependencies
+├── vite.config.ts               # Vite configuration
+├── tailwind.config.js           # Tailwind CSS config
+└── README.md                    # This file
+```
