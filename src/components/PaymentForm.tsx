@@ -2,125 +2,152 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Loader2, CheckCircle, Zap, AlertCircle } from "lucide-react";
 import { ZenithButton } from "./ui/ZenithButton";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { 
+  PublicKey, 
+  SystemProgram, 
+  Transaction, 
+  LAMPORTS_PER_SOL
+} from '@solana/web3.js';
 
 export function PaymentForm() {
-    const { publicKey, sendTransaction } = useWallet();
-    const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+  
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [memo, setMemo] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
 
-    const [recipient, setRecipient] = useState("");
-    const [amount, setAmount] = useState("");
-    const [memo, setMemo] = useState("");
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [success, setSuccess] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [txSignature, setTxSignature] = useState<string | null>(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!publicKey) {
+      setError('Wallet not connected');
+      return;
+    }
 
-    // Transaction Submission
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setIsProcessing(true);
+    setTxSignature(null);
 
-        if (!publicKey) {
-            setError('Wallet not connected');
-            return;
+    try {
+      // Validate recipient
+      let recipientPubkey: PublicKey;
+      try {
+        recipientPubkey = new PublicKey(recipient);
+      } catch (err) {
+        throw new Error('Invalid recipient address format');
+      }
+
+      // Validate amount
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Invalid amount');
+      }
+      if (amountNum > 0.5) {
+        throw new Error('Maximum 0.5 SOL for demo purposes');
+      }
+      
+      const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
+
+      console.log('🚀 Creating transaction...');
+      console.log('From:', publicKey.toBase58());
+      console.log('To:', recipient);
+      console.log('Amount:', amountNum, 'SOL');
+
+      // 🔥 FIX: Create transaction instruction (but don't add blockhash yet)
+      const transferInstruction = SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: recipientPubkey,
+        lamports: lamports,
+      });
+
+      console.log('✍️ Sending transaction...');
+      
+      try {
+        // 🔥 FIX: Let Wallet Adapter handle the transaction construction
+        // This ensures the blockhash is fresh when signing
+        const transaction = new Transaction().add(transferInstruction);
+        
+        // 🔥 IMPORTANT: Don't set blockhash or feePayer here
+        // The wallet adapter will handle it with a fresh blockhash
+        
+        const signature = await sendTransaction(transaction, connection, {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+          maxRetries: 3,
+        });
+        
+        console.log('📤 Transaction sent:', signature);
+        console.log('⏳ Confirming transaction...');
+        
+        // Wait for confirmation with timeout
+        const confirmationPromise = connection.confirmTransaction(signature, 'confirmed');
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Confirmation timeout')), 30000)
+        );
+        
+        await Promise.race([confirmationPromise, timeoutPromise]);
+        
+        console.log('✅ Transaction confirmed!');
+        
+        setTxSignature(signature);
+        setSuccess(true);
+        
+        // Reset form
+        setRecipient("");
+        setAmount("");
+        setMemo("");
+
+        setTimeout(() => {
+          setSuccess(false);
+          setTxSignature(null);
+        }, 8000);
+
+      } catch (txError: any) {
+        console.error('Transaction error:', txError);
+        
+        // Better error messages
+        if (txError?.message?.includes('User rejected')) {
+          throw new Error('You cancelled the transaction');
+        } else if (txError?.message?.includes('Signing failed')) {
+          throw new Error('Passkey authentication failed. Please try again.');
+        } else if (txError?.message?.includes('insufficient')) {
+          throw new Error('Insufficient SOL balance');
+        } else if (txError?.message?.includes('blockhash')) {
+          throw new Error('Transaction expired. Please try again.');
+        } else {
+          throw txError;
         }
+      }
 
-        setError(null);
-        setSuccess(false);
-        setIsProcessing(true);
-        setTxSignature(null);
+    } catch (err) {
+      console.error('❌ Transaction failed:', err);
+      
+      let errorMessage = 'Transaction failed';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => setError(null), 8000);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-        try {
-            // Validate recipient address
-            let recipientPubkey: PublicKey;
-            try {
-                recipientPubkey = new PublicKey(recipient);
-            } catch (err) {
-                throw new Error('Invalid recepient address format');
-            }
-
-            // Convert amount to Lamports
-            const amountNum = parseFloat(amount);
-            if (isNaN(amountNum) || amountNum <= 0) {
-                throw new Error('Invalid amount');
-            }
-            if (amountNum > 0.5) {
-                throw new Error('Maximum 0.5 SOL for demo purposes');
-            } 
-
-            const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
-
-            console.log('🚀 Creating transaction...');
-            console.log('From:', publicKey.toString());
-            console.log('To:', recipient);
-            console.log('Amount:', amountNum, 'SOL')
-
-            // Create transaction
-            const transaction = new Transaction(). add(
-              SystemProgram.transfer({
-                fromPubkey: publicKey,
-                toPubkey: recipientPubkey,
-                lamports: lamports,
-              })                
-            );
-
-            // Send Transaction via Wallet Adapter
-            console.log('✍️ Sending transaction...')
-            const signature = await sendTransaction(transaction, connection);
-
-            console.log('⏳ Confirming transaction...');
-            await connection.confirmTransaction(signature, 'confirmed');
-
-            console.log('✅ Transaction successful!');
-            console.log('Signature:', signature);
-
-            setTxSignature(signature);
-            setSuccess(true);
-
-            // Reset Form
-            setRecipient("");
-            setAmount("");
-            setMemo("");
-
-            // Clear success message after 8 seconds
-            setTimeout(() => {
-                setSuccess(false);
-                setTxSignature(null);
-            }, 8000);
-
-        } catch (err) {
-            console.error('❌ Transaction failed:', err);
-
-            // Error Messages 
-            let errorMessage ='Transaction failed';
-            if (err instanceof Error) {
-                if (err.message.includes('User rejected')) {
-                    errorMessage = 'You cancelled the transaction';
-                } else if (err.message.includes('Invalid')) {
-                    errorMessage = err.message;
-                } else if (err.message.includes('Insufficient')) {
-                    errorMessage = 'Insufficient SOL balance';
-                } else {
-                    errorMessage = err.message;
-                }
-            }
-
-            setError(errorMessage);
-            setTimeout(() => setError(null), 8000);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    return (
+  return (
     <motion.div
       className="glass-card rounded-2xl p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
     >
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-zenith flex items-center justify-center">
           <Send className="w-5 h-5 text-primary-foreground" />
@@ -129,12 +156,11 @@ export function PaymentForm() {
           <h3 className="text-lg font-semibold text-foreground">Send Payment</h3>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Zap className="w-3 h-3 text-accent" />
-            Gasless SOL Transfer (Demo)
+            Gasless SOL Transfer (via Lazorkit)
           </p>
         </div>
       </div>
 
-      {/* Success Message */}
       {success && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -144,7 +170,7 @@ export function PaymentForm() {
           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium text-green-500">Payment Sent!</p>
-            <p className="text-xs text-green-500/70 mt-1">No gas fees charged ✨</p>
+            <p className="text-xs text-green-500/70 mt-1">Transaction confirmed ✨</p>
             {txSignature && (
               <a
                 href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
@@ -162,7 +188,6 @@ export function PaymentForm() {
         </motion.div>
       )}
 
-      {/* Error Message */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -173,11 +198,13 @@ export function PaymentForm() {
           <div>
             <p className="text-sm font-medium text-destructive">Transaction Failed</p>
             <p className="text-xs text-destructive/70 mt-1">{error}</p>
+            <p className="text-xs text-destructive/50 mt-2">
+              💡 Tip: Make sure to approve the passkey prompt when it appears
+            </p>
           </div>
         </motion.div>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
@@ -192,7 +219,7 @@ export function PaymentForm() {
             className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Paste a valid Solana address (e.g., 7xKXtg2CW87...)
+            Paste a valid Solana address
           </p>
         </div>
 
@@ -217,7 +244,7 @@ export function PaymentForm() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Max 0.5 SOL for demo. Get devnet SOL from the wallet card above.
+            Max 0.5 SOL for demo
           </p>
         </div>
 
@@ -249,17 +276,17 @@ export function PaymentForm() {
           ) : (
             <>
               <Send />
-              Send Payment (No Gas Fees)
+              Send Payment
             </>
           )}
         </ZenithButton>
 
         <div className="text-center space-y-1">
           <p className="text-xs text-muted-foreground">
-            ⚡ Gas fees sponsored by Lazorkit Paymaster
+            💡 You'll be prompted for biometric confirmation
           </p>
           <p className="text-xs text-muted-foreground/70">
-            You'll be prompted for biometric confirmation
+            ⚡ Lazorkit enables gasless transactions
           </p>
         </div>
       </form>
