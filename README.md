@@ -125,3 +125,13 @@ Zenith-Flow/
 ├── tailwind.config.js           # Tailwind CSS config
 └── README.md                    # This file
 ```
+
+## 📚 Step-by-Step Tutorials
+### Tutorial 1: Implementing Passkey Authentication
+**See complete tutorial in `docs/TUTORIAL_1.md`**
+
+**What you'll learn:**
+* How Lazorkit uses WebAuthn for authentication
+* Setting up the Wallet Adapter integration
+* Handling biometric authentication flows
+* Managing wallet connection states and errors
