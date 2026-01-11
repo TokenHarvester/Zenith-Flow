@@ -135,3 +135,67 @@ Zenith-Flow/
 * Setting up the Wallet Adapter integration
 * Handling biometric authentication flows
 * Managing wallet connection states and errors
+
+**Quick Example:**
+```
+import { useWallet } from '@solana/wallet-adapter-react';
+import { registerLazorkitWallet } from '@lazorkit/wallet';
+
+// Register Lazorkit wallet on app startup
+useEffect(() => {
+  registerLazorkitWallet({
+    rpcUrl: 'https://api.devnet.solana.com',
+    portalUrl: 'https://portal.lazor.sh',
+    paymasterConfig: {
+      paymasterUrl: 'https://kora.devnet.lazorkit.com'
+    },
+    clusterSimulation: 'devnet',
+  });
+}, []);
+
+// Connect with passkey
+const { select, connect, wallets } = useWallet();
+const lazorkit = wallets.find(w => w.adapter.name.includes('Lazorkit'));
+await select(lazorkit.adapter.name);
+await connect(); // Triggers biometric prompt - no seed phrase!
+```
+
+### Tutorial 2: Sending Gasless Transactions
+**See complete tutorial in `docs/TUTORIAL_2.md`**
+
+**What you'll learn:**
+* How Lazorkit Paymaster sponsors gas fees
+* Creating and sending Solana transactions
+* Handling transaction confirmation
+* Best practices for production deployment
+
+**Quick Example:**
+```
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+export function SendPayment() {
+  const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+  
+  const handleSend = async () => {
+    // 1. Create transaction instruction
+    const instruction = SystemProgram.transfer({
+      fromPubkey: publicKey,
+      toPubkey: recipientAddress,
+      lamports: 0.1 * LAMPORTS_PER_SOL,
+    });
+    
+    // 2. Create and send transaction
+    const transaction = new Transaction().add(instruction);
+    
+    // 3. Lazorkit Paymaster automatically sponsors gas fees!
+    const signature = await sendTransaction(transaction, connection);
+    
+    // 4. Wait for confirmation
+    await connection.confirmTransaction(signature);
+    
+    // ✅ Transaction confirmed - user paid ZERO gas fees!
+  };
+}
+```
