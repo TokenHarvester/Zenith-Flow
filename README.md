@@ -98,17 +98,24 @@ Zenith-Flow/
 │   │   ├── FeatureCards.tsx     # ✨ Feature highlights
 │   │   ├── ZenithLogo.tsx       # 🏔️ Branded logo
 │   │   └── ui/                  # Reusable UI components
-│   │       └── ZenithButton.tsx # Custom button component
+│   │       ├── ZenithButton.tsx # Custom button component
+│   │       ├── sonner.tsx        
+│   │       ├── toast.tsx       
+│   │       ├── toaster.tsx     
+│   │       └── tooltip.tsx      
 │   ├── providers/               # Context providers
 │   │   └── WalletProvider.tsx   # 🔌 Wallet Adapter setup
 │   ├── pages/                   # Page components
 │   │   ├── Index.tsx            # Home page
 │   │   └── NotFound.tsx         # 404 page
 │   ├── lib/                     # Utility functions
+│   │   └── utlis.tsx 
 │   ├── App.tsx                  # Root component
+│   ├── App.css
 │   ├── main.tsx                 # Entry point
 │   └── index.css                # Global styles (Tailwind + custom)
 ├── public/                      # Static assets
+│   └── vite.svg
 ├── docs/                        # Documentation
 │   ├── TUTORIAL_1.md            # Passkey authentication tutorial
 │   └── TUTORIAL_2.md            # Gasless transactions tutorial
