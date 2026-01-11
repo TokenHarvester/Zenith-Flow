@@ -421,3 +421,240 @@ export default defineConfig({
 │   └─────────────┘      └──────────────────┘     │
 └─────────────────────────────────────────────────┘
 ```
+
+### Why Wallet Adapter Integration?
+We use the standard Solana Wallet Adapter pattern instead of direct Lazorkit Provider integration because:
+
+* **✅ Stability:** Production-ready, battle-tested
+* **✅ Compatibility:** Works with all Solana dApps
+* **✅ Flexibility:** Easy to add other wallets (Phantom, Solflare)
+* **✅ Future-proof:** Standard interface for Solana ecosystem
+* **✅ No bugs:** Avoids provider initialization issues
+
+## 🛠️ Development Commands
+```
+# Install dependencies
+npm install --legacy-peer-deps
+
+# Start development server (HTTPS required for passkeys)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+
+# Run linter
+npm run lint
+
+# Type check
+tsc --noEmit
+```
+
+## 🚀 Deployment Guide
+### Deploy to Vercel (Recommended)
+**Prerequisites:**
+
+* GitHub account
+* Vercel account (free)
+
+**Steps:**
+```
+# 1. Push to GitHub
+git add .
+git commit -m "Ready for deployment"
+git push origin main
+
+# 2. Go to vercel.com and click "Add New Project"
+
+# 3. Import your GitHub repository
+
+# 4. Configure build settings:
+#    - Framework Preset: Vite
+#    - Build Command: npm run build
+#    - Install Command: npm install --legacy-peer-deps
+#    - Output Directory: dist
+
+# 5. Add Environment Variables:
+VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
+VITE_IPFS_URL=https://portal.lazor.sh
+VITE_PAYMASTER_URL=https://kora.devnet.lazorkit.com
+
+# 6. Click "Deploy"
+```
+
+**Alternative - Via CLI:**
+```
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+
+# Follow the prompts
+```
+
+## 🐛 Troubleshooting
+### Issue: Blank white page on load
+**Cause:** JavaScript error or missing dependencies
+
+**Solution:**
+```
+# 1. Check browser console for errors (F12)
+# 2. Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install --legacy-peer-deps
+npm run dev
+```
+
+### Issue: "Buffer is not defined" error
+**Cause:** Missing Node.js polyfills
+
+**Solution:** Ensure `vite-plugin-node-polyfills` is configured:
+```
+// vite.config.ts
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    nodePolyfills(), // ← This is required!
+  ],
+});
+```
+
+### Issue: Passkey prompt doesn't appear
+**Causes:**
+
+* Not using HTTPS (localhost HTTP won't work for WebAuthn)
+* Browser doesn't support WebAuthn
+* Popup blocker enabled
+
+**Solutions:**
+
+1. Ensure running on https://localhost:5173 (not http://)
+2. Use Chrome/Edge/Safari (not IE or older browsers)
+3. Allow popups from localhost in browser settings
+
+### Issue: "Transaction too large" error
+**Cause:** Transaction exceeds 1232 byte limit
+
+**Solution:** Use smaller amounts (recommended: 0.01-0.15 SOL)
+```
+// Instead of
+sendTransaction(0.5); // ❌ Too large
+
+// Do this
+sendTransaction(0.1); // ✅ Works reliably
+```
+
+### Issue: Transaction times out
+**Cause:** Blockhash expired while waiting for biometric auth
+
+**Solution:** This is fixed in the latest code - wallet adapter gets fresh blockhash. If still occurring, try:
+1. Complete biometric auth faster
+2. Refresh page and try again
+3. Check Solana network status
+
+### Issue: Vercel deployment fails
+**Common causes:**
+* Missing `--legacy-peer-deps` flag
+* Node version mismatch
+* Build script errors
+
+**Solution:** Create `vercel.json`:
+```
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "vite",
+  "outputDirectory": "dist"
+}
+```
+
+## 📖 Additional Resources
+### Lazorkit Documentation
+
+* Main Docs: docs.lazorkit.com
+* GitHub: github.com/lazor-kit/lazor-kit
+* Telegram Community: t.me/lazorkit
+* Twitter: Follow @lazorkit for updates
+
+### Solana Resources
+
+* Web3.js Docs: solana-labs.github.io/solana-web3.js
+* Wallet Adapter: github.com/solana-labs/wallet-adapter
+* Solana Cookbook: solanacookbook.com
+* Devnet Explorer: explorer.solana.com/?cluster=devnet
+* Devnet Faucet: faucet.solana.com
+
+### Design & Development
+
+* Tailwind CSS: tailwindcss.com
+* Framer Motion: framer.com/motion
+* Lucide Icons: lucide.dev
+* React Docs: react.dev
+* Vite Guide: vitejs.dev/guide
+
+## 🤝 Contributing
+Contributions are welcome! This is a starter template - feel free to:
+
+* 🐛 Report bugs via GitHub Issues
+* 💡 Suggest features or improvements
+* 🔧 Submit pull requests
+* 📖 Improve documentation
+* 🎨 Enhance UI/UX
+* 🌐 Add translations
+
+**Contribution Guidelines:**
+
+* Follow existing code style and structure
+* Add comments for complex logic
+* Update documentation for new features
+* Test thoroughly on Devnet before submitting
+* Include screenshots for UI changes
+
+## 📄 License
+MIT License
+
+## 🙏 Acknowledgments
+Built With
+
+* Lazorkit Team - For creating an incredible SDK that makes Web3 truly accessible
+* Solana Foundation - For the fastest and most scalable blockchain infrastructure
+* WebAuthn Standard - For making passwordless authentication a reality
+* Wallet Adapter Team - For the standard Solana wallet interface
+
+## 📞 Support & Contact
+### Questions or Issues?
+
+1. Check the documentation - See docs/ folder and this README
+2. Review troubleshooting - Common issues listed above
+3. Search GitHub Issues - Someone may have had the same problem
+4. Join Lazorkit Telegram - Community support and discussions
+5. Open a GitHub Issue - For bugs or feature requests
+
+### Report Security Issues
+If you discover a security vulnerability, please email directly rather than opening a public issue:
+
+**Security Contact:** [tokenharvester@gmail.com]
+
+## 🌟 Final Notes
+ZenithFlow is more than just a demo - it's a vision of what blockchain applications should be:
+
+✨ Simple - No technical jargon or complex setup
+
+🔐 Secure - Industry-standard biometric authentication
+
+⚡ Fast - Instant transactions with zero gas fees
+
+🎨 Beautiful - Delightful user experience throughout
+
+🚀 Accessible - Anyone with a smartphone can use it
+
+This is the peak of Web3 UX. This is ZenithFlow.
+
+We believe that all blockchain applications will work this way. Seed phrases will be a relic of the past. Gas fees will be invisible. And everyday users will finally be able to experience the benefits of Web3 without the complexity.
+Join us at the peak. Build the future. Make Web3 accessible to everyone.
