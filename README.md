@@ -1,4 +1,4 @@
-# ZenithFlow - Lazorkit SDK Integration Demo
+# ZenithFlow
 🚀 Live Demo: https://zenithflow-blue.vercel.app/
 
 ## 📖 Project Overview
