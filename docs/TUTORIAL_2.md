@@ -457,3 +457,190 @@ export function Dashboard() {
   );
 }
 ```
+
+### Step 3: Create Custom Button Component
+**File:** `src/components/ui/ZenithButton.tsx`
+```
+import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { cn } from '@/lib/utils';
+
+interface ZenithButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger';
+}
+
+export const ZenithButton = forwardRef<HTMLButtonElement, ZenithButtonProps>(
+  ({ className, variant = 'primary', disabled, children, ...props }, ref) => {
+    const baseStyles = 'px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center';
+    
+    const variantStyles = {
+      primary: 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed',
+      secondary: 'bg-white/5 hover:bg-white/10 text-white border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed',
+      danger: 'bg-red-500/20 hover:bg-red-500/30 text-red-300 disabled:opacity-50 disabled:cursor-not-allowed',
+    };
+
+    return (
+      <button
+        ref={ref}
+        className={cn(baseStyles, variantStyles[variant], className)}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+);
+
+ZenithButton.displayName = 'ZenithButton';
+```
+
+## Understanding the Code
+### Transaction Building Breakdown
+```
+// 1. CREATE TRANSFER INSTRUCTION
+const transferInstruction = SystemProgram.transfer({
+  fromPubkey: publicKey,      // Your wallet address
+  toPubkey: recipientPubkey,  // Recipient's address
+  lamports: amount * LAMPORTS_PER_SOL, // Amount in lamports (1 SOL = 1e9 lamports)
+});
+
+// 2. CREATE TRANSACTION
+const transaction = new Transaction().add(transferInstruction);
+
+// 3. SET TRANSACTION METADATA
+const { blockhash } = await connection.getLatestBlockhash();
+transaction.recentBlockhash = blockhash;  // Prevents replay attacks
+transaction.feePayer = publicKey;          // Who pays gas (overridden by paymaster)
+
+// 4. SEND TRANSACTION
+// This is where the magic happens!
+// sendTransaction() automatically routes through Lazorkit Paymaster
+const signature = await sendTransaction(transaction, connection);
+
+// 5. CONFIRM TRANSACTION
+await connection.confirmTransaction({
+  signature,
+  blockhash,
+  lastValidBlockHeight,
+});
+```
+
+### How Paymaster Sponsorship Works
+```
+// What happens inside sendTransaction():
+
+1. Transaction created by user
+   ↓
+2. Wallet Adapter detects Lazorkit wallet
+   ↓
+3. Transaction sent to Lazorkit SDK
+   ↓
+4. Lazorkit adds paymaster instruction:
+   {
+     type: 'paymasterSponsor',
+     sponsor: PAYMASTER_PUBKEY,
+     fee: 0.000005 SOL,
+   }
+   ↓
+5. Transaction sent to Solana
+   ↓
+6. Network deducts:
+   - Transfer amount from user
+   - Gas fee from paymaster ✅
+   ↓
+7. User's final balance = initial - transfer amount ONLY
+```
+
+### Confirmation Strategy
+```
+// RECOMMENDED: Wait for confirmation
+const confirmation = await connection.confirmTransaction({
+  signature,
+  blockhash,
+  lastValidBlockHeight,
+});
+
+// Why this matters:
+// - Ensures transaction actually went through
+// - Prevents showing success for failed transactions
+// - Catches errors before user thinks it's done
+
+// Alternative (faster but less reliable):
+const latestBlockhash = await connection.getLatestBlockhash();
+await connection.confirmTransaction(signature, 'confirmed');
+// ☝️ 'confirmed' = faster but can be rolled back
+// 'finalized' = slower but permanent
+```
+
+## Testing Transactions
+### Test Preparation
+**1. Get Test Funds**
+```
+1. Visit https://faucet.solana.com
+2. Enter your wallet address
+3. Request 2 SOL (devnet)
+4. Wait 10-15 seconds
+5. Refresh balance in ZenithFlow
+```
+
+**2. Prepare Test Addresses**
+```
+Option A: Use your own address (test sending to yourself)
+Option B: Use a friend's address
+Option C: Create a new wallet and use that address
+```
+
+### Test Cases
+**Test 1: Minimum Amount (0.01 SOL)**
+```
+Recipient: [ANY_VALID_ADDRESS]
+Amount: 0.01
+Expected: ✅ Success in ~2-5 seconds
+```
+
+**Test 2: Medium Amount (0.05 SOL)**
+```
+Recipient: [ANY_VALID_ADDRESS]
+Amount: 0.05
+Expected: ✅ Success in ~3-6 seconds
+```
+
+**Test 3: Near Limit (0.15 SOL)**
+```
+Recipient: [ANY_VALID_ADDRESS]
+Amount: 0.15
+Expected: ✅ Success but may be slower (~5-10 seconds)
+```
+
+**Test 4: Over Limit (0.5 SOL)**
+```
+Recipient: [ANY_VALID_ADDRESS]
+Amount: 0.5
+Expected: ❌ "Transaction too large" error
+Solution: Split into multiple 0.1 SOL transactions
+```
+
+### Verification Checklist
+After each transaction:
+
+ * Transaction signature appears
+ * Success message shows "Gas fee: $0"
+ * "View on Solana Explorer" link works
+ * Explorer shows transaction confirmed
+ * Balance decreased by EXACT amount sent (no gas deducted)
+ * Recipient's balance increased
+
+### Balance Verification Example
+```
+Before Transaction:
+  Your Balance: 2.0000 SOL
+  
+Send: 0.1 SOL
+
+After Transaction:
+  Your Balance: 1.9000 SOL ✅ (NOT 1.89995)
+  
+Gas Fee Paid by You: 0.0000 SOL ✅
+Gas Fee Paid by Paymaster: ~0.000005 SOL
+```
+
