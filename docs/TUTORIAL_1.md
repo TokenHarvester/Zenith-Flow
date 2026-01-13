@@ -351,3 +351,302 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
   );
 }
 ```
+
+### Step 4: Handle Connection in Main Page
+**File:** src/pages/Index.tsx
+```
+import { useState } from 'react';
+import { PasskeyGateway } from '@/components/PasskeyGateway';
+import { Dashboard } from '@/components/Dashboard';
+
+export function Index() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  if (!isAuthenticated) {
+    return <PasskeyGateway onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
+  return <Dashboard />;
+}
+```
+
+## Understanding the Code
+### The Wallet Adapter Hook
+The `useWallet()` hook provides everything you need to manage wallet connections:
+```
+import { useWallet } from '@solana/wallet-adapter-react';
+
+function MyComponent() {
+  const {
+    // Connection State
+    connected,      // boolean - Is wallet connected?
+    connecting,     // boolean - Is connection in progress?
+    disconnecting,  // boolean - Is disconnection in progress?
+    
+    // Wallet Information
+    publicKey,      // PublicKey | null - User's wallet address
+    wallet,         // Wallet | null - Wallet adapter instance
+    
+    // Actions
+    connect,        // () => Promise<void> - Trigger connection
+    disconnect,     // () => Promise<void> - Disconnect wallet
+    select,         // (name: string) => void - Select specific wallet
+    
+    // Available Wallets
+    wallets,        // Wallet[] - All registered wallets
+  } = useWallet();
+  
+  return (
+    <div>
+      {connected ? (
+        <p>Connected: {publicKey?.toBase58()}</p>
+      ) : (
+        <button onClick={connect}>Connect Wallet</button>
+      )}
+    </div>
+  );
+}
+```
+
+### Authentication Flow Breakdown
+Here's what happens when a user clicks "Connect with Lazorkit":
+```
+// 1. User clicks connect button
+<WalletMultiButton />
+
+// 2. Wallet modal opens showing available wallets
+// (Lazorkit appears because we registered it)
+
+// 3. User selects "Lazorkit"
+// Wallet Adapter calls: wallet.adapter.connect()
+
+// 4. Lazorkit opens authentication portal
+// This is an iframe or popup window
+
+// 5. Portal triggers WebAuthn ceremony
+// Browser shows biometric prompt
+
+// 6. User completes Face ID / Touch ID
+// Private key generated in secure enclave
+
+// 7. Smart wallet created on Solana
+// Program Derived Address (PDA) computed
+
+// 8. Connection confirmed
+// useWallet() hook's `connected` becomes true
+
+// 9. Session persisted in localStorage
+// User stays connected across page refreshes
+```
+
+### Session Persistence
+Wallet Adapter automatically handles session persistence:
+```
+// In WalletProvider setup
+<WalletProvider wallets={wallets} autoConnect>
+  {/* autoConnect tries to restore previous session */}
+</WalletProvider>
+
+// This means:
+// 1. User connects wallet → Session saved to localStorage
+// 2. User refreshes page → autoConnect reads localStorage
+// 3. User is automatically reconnected (no biometric prompt)
+
+// Note: Transactions still require biometric confirmation
+```
+
+## Testing Your Implementation
+### Local Testing Checklist
+**1. Start Development Server**
+```
+npm run dev
+```
+Access at: `https://localhost:5173` (note HTTPS!)
+
+**2. Accept Security Warning**
+
+Click "Advanced" → "Proceed to localhost"
+This is normal for local HTTPS certificates
+
+**3. Test Connection Flow**
+
+ * Click "Connect with Lazorkit"
+ * Wallet modal opens
+ * Lazorkit appears in wallet list
+ * Biometric prompt appears
+ * Complete Face ID/Touch ID
+ * Dashboard loads with wallet address visible
+
+**4. Test Session Persistence**
+
+ * Refresh the page (F5)
+ * User should remain connected
+ * No biometric prompt required
+ * Dashboard loads immediately
+
+**5. Test Disconnection**
+
+ * Click disconnect button
+ * User returns to gateway screen
+ * Refresh page - user stays disconnected
+
+### Browser Console Checks
+Open DevTools (F12) and check console for:
+```
+// ✅ Good: Should see Lazorkit registration
+"Lazorkit wallet registered successfully"
+
+// ✅ Good: Connection events
+"Wallet connected: [PUBLIC_KEY]"
+
+// ❌ Bad: Missing polyfills
+"Buffer is not defined"
+// Fix: Ensure vite-plugin-node-polyfills is configured
+
+// ❌ Bad: HTTPS error
+"SecurityError: WebAuthn requires HTTPS"
+// Fix: Access via https://localhost:5173 not http://
+```
+
+## Troubleshooting
+### Issue: Biometric Prompt Doesn't Appear
+### Causes:
+
+* Not using HTTPS
+* Browser doesn't support WebAuthn
+* Popup blocker enabled
+
+### Solutions:
+
+* Ensure you're accessing via https://localhost:5173
+* Use Chrome, Edge, Safari, or Firefox (not IE)
+* Allow popups from localhost in browser settings
+* Check browser console for security errors
+
+### Issue: "Buffer is not defined"
+### Cause: 
+Missing Node.js polyfills for browser
+### Solution: 
+Ensure `vite.config.ts` includes:
+```
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    nodePolyfills(), // This line!
+  ],
+});
+```
+
+### Issue: Wallet Doesn't Appear in Modal
+### Cause: 
+Lazorkit not registered before modal opens
+### Solution: 
+Ensure registration happens in useEffect:
+```
+useEffect(() => {
+  registerLazorkitWallet({
+    rpcUrl: endpoint,
+    portalUrl: import.meta.env.VITE_IPFS_URL,
+    paymasterConfig: {
+      paymasterUrl: import.meta.env.VITE_PAYMASTER_URL,
+    },
+  });
+}, []); // Empty dependency array = runs once on mount
+```
+
+### Issue: Connection Fails with "NotAllowedError"
+### Cause: 
+User dismissed biometric prompt
+### Solution: 
+This is normal user behavior. Show a friendly message:
+```
+try {
+  await connect();
+} catch (error) {
+  if (error.message.includes('NotAllowedError')) {
+    toast.error('Authentication cancelled. Please try again.');
+  }
+}
+```
+
+## Security Considerations
+### Private Key Management
+```
+┌────────────────────────────────────────┐
+│     Private Key Security Layers        │
+├────────────────────────────────────────┤
+│ 1. Secure Enclave (Hardware)           │
+│    - TPM / Trusted Execution Env       │
+│    - Physical isolation                │
+│    - Anti-tampering protections        │
+├────────────────────────────────────────┤
+│ 2. WebAuthn Standard                   │
+│    - FIDO2 certified                   │
+│    - Cryptographic attestation         │
+│    - Challenge-response auth           │
+├────────────────────────────────────────┤
+│ 3. Biometric Authentication            │
+│    - Face ID / Touch ID                │
+│    - Local verification only           │
+│    - No biometric data transmitted     │
+├────────────────────────────────────────┤
+│ 4. Smart Contract Verification         │
+│    - On-chain ownership proof          │
+│    - Program Derived Addresses         │
+│    - Verifiable key rotation           │
+└────────────────────────────────────────┘
+```
+
+### Security Guarantees:
+
+**1. Private Keys Never Leave Device**
+
+* Generated in secure enclave
+* Never exposed to JavaScript
+* Can't be extracted, even by OS
+
+**2. No Seed Phrase Vulnerabilities**
+
+* Nothing to phish
+* Nothing to write down
+* Nothing to lose or steal
+
+**3. Hardware-Backed Authentication**
+
+* Same security as your banking apps
+* Survives device compromise
+* Protected by OS-level security
+
+**4. On-Chain Verification**
+
+* Smart contracts verify signatures
+* Program Derived Addresses (PDAs)
+* Transparent audit trail
+
+### Best Practices
+### DO:
+* ✅ Always use HTTPS in production
+* ✅ Implement proper error handling
+* ✅ Show clear authentication states
+* ✅ Explain passkey benefits to users
+* ✅ Test on multiple devices/browsers
+
+### DON'T:
+
+* ❌ Store wallet addresses in plain text
+* ❌ Bypass WebAuthn ceremonies
+* ❌ Implement custom cryptography
+* ❌ Trust client-side validation alone
+* ❌ Skip security audits for production
+
+## Next Steps
+Congratulations! You've successfully implemented passkey authentication. Your users can now:
+
+* 🎉 Connect wallets with Face ID/Touch ID
+* 🎉 No seed phrases to manage
+* 🎉 Automatic session persistence
+* 🎉 Hardware-level security
+
+### Continue Learning:
