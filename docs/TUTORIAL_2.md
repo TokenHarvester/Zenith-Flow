@@ -775,3 +775,158 @@ async function handleTransactionError(error: any) {
 
 ## Production Best Practices
 ### 1. Transaction Confirmation Strategy
+```
+// GOOD: Full confirmation with timeout
+async function confirmTransactionWithTimeout(
+  connection: Connection,
+  signature: string,
+  timeout: number = 30000 // 30 seconds
+): Promise<boolean> {
+  const start = Date.now();
+  
+  while (Date.now() - start < timeout) {
+    const status = await connection.getSignatureStatus(signature);
+    
+    if (status.value?.confirmationStatus === 'finalized') {
+      return true;
+    }
+    
+    if (status.value?.err) {
+      throw new Error('Transaction failed');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  throw new Error('Transaction confirmation timeout');
+}
+```
+
+### 2. Balance Validation
+```
+// Check balance before transaction
+async function validateBalance(
+  connection: Connection,
+  publicKey: PublicKey,
+  amount: number
+): Promise<boolean> {
+  const balance = await connection.getBalance(publicKey);
+  const required = amount * LAMPORTS_PER_SOL;
+  
+  if (balance < required) {
+    toast.error(`Insufficient balance. Need ${amount} SOL, have ${balance / LAMPORTS_PER_SOL} SOL`);
+    return false;
+  }
+  
+  return true;
+}
+```
+
+### 3. Transaction History Tracking
+```
+interface TransactionRecord {
+  signature: string;
+  amount: number;
+  recipient: string;
+  timestamp: number;
+  status: 'pending' | 'confirmed' | 'failed';
+}
+
+function saveTransaction(record: TransactionRecord) {
+  const history = JSON.parse(localStorage.getItem('tx_history') || '[]');
+  history.unshift(record);
+  localStorage.setItem('tx_history', JSON.stringify(history.slice(0, 100))); // Keep last 100
+}
+```
+
+### 4. Rate Limiting
+```
+// Prevent transaction spam
+const lastTxTime = useRef<number>(0);
+const MIN_TX_INTERVAL = 2000; // 2 seconds
+
+async function sendWithRateLimit() {
+  const now = Date.now();
+  const timeSinceLastTx = now - lastTxTime.current;
+  
+  if (timeSinceLastTx < MIN_TX_INTERVAL) {
+    toast.warning(`Please wait ${Math.ceil((MIN_TX_INTERVAL - timeSinceLastTx) / 1000)} seconds`);
+    return;
+  }
+  
+  lastTxTime.current = now;
+  await sendTransaction();
+}
+```
+
+### 5. Network Status Check
+```
+// Check if Solana network is healthy
+async function checkNetworkHealth(connection: Connection): Promise<boolean> {
+  try {
+    const health = await connection.getHealth();
+    if (health !== 'ok') {
+      toast.warning('Solana network may be experiencing issues');
+      return false;
+    }
+    return true;
+  } catch {
+    toast.error('Cannot connect to Solana network');
+    return false;
+  }
+}
+```
+
+## Next Steps
+Congratulations! You've successfully implemented gasless transactions! Your users can now:
+
+* 🎉 Send SOL without paying gas fees
+* 🎉 Experience Web2-like transaction simplicity
+* 🎉 No "insufficient funds for gas" errors
+* 🎉 Automatic paymaster sponsorship
+
+### What You've Accomplished
+You've built a complete gasless payment system that:
+
+* ✅ Creates Solana transactions programmatically
+* ✅ Handles biometric confirmation flows
+* ✅ Routes through Lazorkit Paymaster automatically
+* ✅ Confirms transactions reliably
+* ✅ Provides user-friendly error messages
+* ✅ Works within transaction size constraints
+
+### Advanced Features to Explore
+
+**1. Token Transfers**
+
+* Send SPL tokens (not just SOL)
+* Handle token account creation
+* Support multiple token types
+
+**2. Transaction History**
+
+* Display past transactions
+* Filter by date/amount/status
+* Export transaction records
+
+
+**3. Batch Transactions**
+
+* Send to multiple recipients
+* Automatic chunking for large amounts
+* Progress tracking
+
+
+**4. Smart Notifications**
+
+* Desktop/push notifications
+* Email confirmations
+* Transaction alerts
+
+
+**5. Advanced Error Recovery**
+
+* Automatic retry logic
+* Transaction queuing
+* Offline support
+
