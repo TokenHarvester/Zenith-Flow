@@ -650,3 +650,22 @@ Congratulations! You've successfully implemented passkey authentication. Your us
 * 🎉 Hardware-level security
 
 ### Continue Learning:
+**1. Tutorial 2: Sending Gasless Transactions**
+
+* Learn how to send SOL without gas fees
+* Implement the PaymentForm component
+* Handle transaction confirmations
+
+**2. Advanced Topics:**
+
+* Multi-signature wallets
+* Key rotation and recovery
+* Custom authentication flows
+* Cross-device synchronization
+
+**3. Production Deployment:**
+
+* SSL certificate setup
+* Error monitoring
+* Analytics integration
+* Performance optimization
