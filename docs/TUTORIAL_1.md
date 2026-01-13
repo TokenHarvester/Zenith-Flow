@@ -224,3 +224,130 @@ export function AppWalletProvider({ children }: { children: React.ReactNode }) {
 ```
 
 ### What's Happening Here:
+1. `registerLazorkitWallet()`: This function registers Lazorkit as an available wallet in the Wallet Adapter system. It needs to run once when your app starts.
+2. `paymasterConfig`: Enables gasless transactions (covered in Tutorial 2)
+3. `autoConnect: true`: Automatically reconnects users if they have an existing session
+4. Empty `wallets` array: Lazorkit self-registers, so we don't need to manually add it to the list
+
+### Step 2: Wrap Your App with WalletProvider
+**File:** `src/App.tsx`
+```
+import { AppWalletProvider } from './providers/WalletProvider';
+import { Index } from './pages/Index';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+function App() {
+  return (
+    <AppWalletProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Index />} />
+        </Routes>
+      </Router>
+    </AppWalletProvider>
+  );
+}
+
+export default App;
+```
+
+### Step 3: Create Authentication Component
+This is the main component users interact with to connect their wallet.
+
+**File:** src/components/PasskeyGateway.tsx
+```
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useEffect, useState } from 'react';
+import { Mountain, Shield, Zap, Users } from 'lucide-react';
+import { ZenithLogo } from './ZenithLogo';
+
+export function PasskeyGateway({ onAuthenticated }: { onAuthenticated: () => void }) {
+  const { connected, connecting, wallet } = useWallet();
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Check connection status and redirect if connected
+  useEffect(() => {
+    if (connected) {
+      // User is authenticated, transition to dashboard
+      onAuthenticated();
+    }
+    setIsChecking(false);
+  }, [connected, onAuthenticated]);
+
+  if (isChecking || connecting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-300">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="flex justify-center mb-6">
+            <ZenithLogo className="w-24 h-24" />
+          </div>
+          
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+            Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">ZenithFlow</span>
+          </h1>
+          
+          <p className="text-xl text-gray-300 mb-8">
+            Experience the peak of Web3 UX. No seed phrases. No gas fees. Just seamless blockchain interactions.
+          </p>
+
+          {/* Connect Button */}
+          <div className="flex justify-center">
+            <WalletMultiButton className="!bg-gradient-to-r !from-purple-500 !to-pink-600 hover:!from-purple-600 hover:!to-pink-700 !rounded-xl !px-8 !py-4 !text-lg !font-semibold !transition-all !duration-300 !shadow-lg hover:!shadow-xl" />
+          </div>
+
+          <p className="text-sm text-gray-400 mt-4">
+            🔐 Secured by {wallet ? wallet.adapter.name : 'Lazorkit'} • No seed phrases required
+          </p>
+        </div>
+
+        {/* Feature Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <FeatureCard
+            icon={<Shield className="w-8 h-8 text-purple-400" />}
+            title="Passkey Security"
+            description="Face ID, Touch ID, or Windows Hello authentication"
+          />
+          <FeatureCard
+            icon={<Zap className="w-8 h-8 text-yellow-400" />}
+            title="Gasless Transactions"
+            description="Zero gas fees for all transactions"
+          />
+          <FeatureCard
+            icon={<Mountain className="w-8 h-8 text-blue-400" />}
+            title="Peak UX"
+            description="Web2 simplicity meets Web3 power"
+          />
+          <FeatureCard
+            icon={<Users className="w-8 h-8 text-green-400" />}
+            title="For Everyone"
+            description="No technical knowledge required"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-all duration-300">
+      <div className="mb-4">{icon}</div>
+      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+      <p className="text-sm text-gray-400">{description}</p>
+    </div>
+  );
+}
+```
