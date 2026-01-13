@@ -644,3 +644,134 @@ Gas Fee Paid by You: 0.0000 SOL ✅
 Gas Fee Paid by Paymaster: ~0.000005 SOL
 ```
 
+## Transaction Size Limits
+### Understanding the Limit
+Lazorkit's paymaster has a maximum transaction size of 1232 bytes.
+
+### Why this matters:
+* Gasless transactions require extra instructions
+* Paymaster adds sponsor account data
+* Larger amounts = more compute units = bigger transaction
+
+### Size Guidelines
+```
+Transaction Amount → Estimated Size → Success Rate
+────────────────────────────────────────────────
+0.01 - 0.05 SOL   →  ~800 bytes    →  ✅ 99%
+0.05 - 0.10 SOL   →  ~950 bytes    →  ✅ 95%
+0.10 - 0.15 SOL   →  ~1100 bytes   →  ✅ 85%
+0.15 - 0.20 SOL   →  ~1200 bytes   →  ⚠️ 60%
+0.20+ SOL         →  ~1300+ bytes  →  ❌ <10%
+```
+
+### Workaround: Split Large Transfers
+```
+async function sendLargeAmount(
+  recipient: PublicKey,
+  totalAmount: number,
+  chunkSize: number = 0.1
+) {
+  const chunks = Math.ceil(totalAmount / chunkSize);
+  
+  for (let i = 0; i < chunks; i++) {
+    const amount = Math.min(chunkSize, totalAmount - (i * chunkSize));
+    
+    // Send chunk
+    await sendTransaction(amount, recipient);
+    
+    // Wait between transactions
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log(`Sent chunk ${i + 1}/${chunks}: ${amount} SOL`);
+  }
+  
+  console.log(`✅ Sent total: ${totalAmount} SOL in ${chunks} transactions`);
+}
+
+// Example usage:
+// Send 0.5 SOL as 5 transactions of 0.1 SOL each
+await sendLargeAmount(recipientPubkey, 0.5, 0.1);
+```
+
+## Error Handling
+### Common Errors & Solutions
+### Error: "Transaction too large"
+
+```
+catch (error: any) {
+  if (error.message.includes('Transaction too large')) {
+    toast.error('Amount too large. Try a smaller amount (< 0.15 SOL)');
+    // Suggest: "Would you like to split this into multiple transactions?"
+  }
+}
+```
+**Solution:** Use amounts under 0.15 SOL or split into chunks.
+
+### Error: "Insufficient funds"
+```
+catch (error: any) {
+  if (error.message.includes('insufficient funds')) {
+    const balance = await connection.getBalance(publicKey);
+    toast.error(`Insufficient balance. You have ${balance / LAMPORTS_PER_SOL} SOL`);
+  }
+}
+```
+**Solution:** User needs more SOL or should send a smaller amount.
+
+### Error: "User rejected"
+```
+catch (error: any) {
+  if (error.message.includes('User rejected')) {
+    toast.info('Transaction cancelled by user');
+    // This is normal - user dismissed biometric prompt
+  }
+}
+```
+**Solution:** No action needed - user intentionally cancelled.
+
+### Error: "Blockhash not found"
+```
+catch (error: any) {
+  if (error.message.includes('Blockhash not found')) {
+    toast.error('Transaction expired. Please try again.');
+    // Blockhash expired while waiting for biometric auth
+  }
+}
+```
+**Solution:** Get fresh blockhash before retrying:
+```
+const { blockhash } = await connection.getLatestBlockhash('finalized');
+```
+
+### Comprehensive Error Handler
+```
+async function handleTransactionError(error: any) {
+  console.error('Transaction error:', error);
+
+  // Specific error handling
+  if (error.message.includes('User rejected')) {
+    return toast.info('Transaction cancelled');
+  }
+  
+  if (error.message.includes('insufficient funds')) {
+    return toast.error('Insufficient balance');
+  }
+  
+  if (error.message.includes('Transaction too large')) {
+    return toast.error('Transaction too large. Use < 0.15 SOL');
+  }
+  
+  if (error.message.includes('Blockhash not found')) {
+    return toast.error('Transaction expired. Try again.');
+  }
+  
+  // Generic error
+  toast.error('Transaction failed: ' + (error.message || 'Unknown error'));
+  
+  // Optional: Send to error tracking service
+  // logErrorToSentry(error);
+}
+```
+
+## Production Best Practices
+### 1. Transaction Confirmation Strategy
